@@ -88,6 +88,7 @@ int main(int argc, char* argv[]){
 		int threadRank = omp_get_thread_num();
 		int sz = nthreads;
 		qsort(arr[threadRank], sizes[threadRank], sizeof(int), cmpfunc);
+		#pragma omp barrier
 		for(int iter = 0 ; iter < logT ; iter++){
 			int medianBroadcasterThreadRank = pow(2, iter) * threadRank/nthreads;
 			medianBroadcasterThreadRank *= sz;
