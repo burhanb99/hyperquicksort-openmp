@@ -3,7 +3,7 @@
 using namespace std;
 int main(int argc, char* argv[]){
 	if(argc != 3){
-		cout<<"./a.out <output_filename> <number_of_elements>"<<endl;
+		cout<<"./random <output_filename> <number_of_elements>"<<endl;
 		exit(EXIT_FAILURE);
 	}
 	srand(time(0));
