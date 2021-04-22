@@ -5,7 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
-
+#include <signal.h>
+#include <unistd.h>
 int cmpfunc (const void * a, const void * b){
    return  *(int*)a >= *(int*)b ? 1 : -1;
 }
@@ -30,6 +31,7 @@ void writeArrayValues(char* filename, int n, int* arr){
 		fprintf(stderr, "Error while opening file\n");
 		exit(EXIT_FAILURE);
 	}
+	fprintf(file,"%d \n", n);
 	for(int i = 0 ; i < n; i++)
 		fprintf(file,"%d \n",arr[i]);
    	for(int i = 1 ; i < n; i++)
