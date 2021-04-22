@@ -48,9 +48,17 @@ int roundUp(int numToRound, int multiple)
 }
 int findPivot(int median, int n, int **arr, int threadRank){
 	//can be optimized by doubling technique later
+
 	int pivot = 0;
 	while(pivot < n && arr[threadRank][pivot] < median)
         pivot++;
+    // #pragma omp critical
+    // {
+    // 	printf("Thread : %d\n", omp_get_thread_num());
+    // 	printf("sizes[threadRank] : %d\n", n);
+    // 	printf("pivots[threadRank] : %d\n", pivot);
+    // 	printf("median : %d\n", median);
+    // }
     return pivot;
 }
 int main(int argc, char* argv[]){
@@ -98,6 +106,7 @@ int main(int argc, char* argv[]){
 		int threadRank = omp_get_thread_num();
 		int sz = nthreads;
 		qsort(arr[threadRank], sizes[threadRank], sizeof(int), cmpfunc);
+		#pragma omp barrier
 		for(int iter = 0 ; iter < logT ; iter++){
 			int medianBroadcasterThreadRank = pow(2, iter) * threadRank/nthreads;
 			medianBroadcasterThreadRank *= sz;
@@ -109,8 +118,11 @@ int main(int argc, char* argv[]){
 			pivots[threadRank] = findPivot(median, sizes[threadRank], arr, threadRank);
 			int sizeOfPairThread = sizes[pairThreadRank];
 
-			memcpy(pairThreadArr, arr[pairThreadRank], sizes[pairThreadRank]*sizeof(int));	
-  
+			for(int i = 0 ; i < sizes[pairThreadRank] ; i++){
+				pairThreadArr[i] = arr[pairThreadRank][i];
+			}
+			// memcpy(pairThreadArr, arr[pairThreadRank], sizes[pairThreadRank]*sizeof(int));	
+  			
         	//wait for all threads to compute the pivot and store in the shared pivots array
            	#pragma omp barrier
            	int pivotOfPairThread = pivots[pairThreadRank];
@@ -161,17 +173,30 @@ int main(int argc, char* argv[]){
 	            merge_buf[k++] = pairThreadArr[j++];
 			
 			// memcpy(arr[threadRank], merge_buf, sizes[threadRank]);
+			for(int i = 0 ; i < n ; i++){
+				arr[threadRank][i] = INT_MAX;
+			}
 			for(int i = 0 ; i < sizes[threadRank] ; i++){
 				arr[threadRank][i] = merge_buf[i];
 			}
 			//check arr
 			// #pragma omp critical
 			// {	
-			// 	printf("Thread %d\n", threadRank);
+			// 	printf("\n................\n");
+			// 	printf("Iter :%d\n", iter);
+			// 	printf("Thread :%d\n", threadRank);
+			// 	printf("Size : %d\n", sizes[threadRank]);
+			// 	printf("i_end : %d\n", i_end);
+			// 	printf("j_end : %d\n", recv_count);
+			// 	printf("pivots[threadRank] : %d\n", pivots[threadRank]);
+			// 	printf("pivots[pairThreadRank] : %d\n", pivotOfPairThread);
 			// 	for(int i = 0 ; i < sizes[threadRank] ; i++){
 			// 		printf("%d ", arr[threadRank][i]);
 			// 	}
-			// 	printf("\n");
+				
+			// 	printf("\n#############\n");
+				
+
 			// }
         	sz /= 2;	
 			#pragma omp barrier
