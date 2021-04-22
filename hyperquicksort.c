@@ -62,7 +62,6 @@ int main(int argc, char* argv[]){
 	int n, *A;
 	A = readArrayValues(argv[1], &n);
 	int nthreads = roundUp(atoi(argv[3]), 2);
-	// printf("%d\n", nthreads);
 	int *pivots, *sizes;
 	pivots = (int*) malloc(sizeof(int) * nthreads);
 	sizes = (int*) malloc(sizeof(int) * nthreads);
@@ -84,15 +83,6 @@ int main(int argc, char* argv[]){
 		sizes[i%nthreads]++;
 	}
 	int logT = round(log(nthreads) / log(2));
-	// printf("%d\n", logT);
-	// arr check
-	// for(int i = 0 ; i < nthreads ; i++){
-	// 	for(int j = 0 ; j < sizes[i] ; j++){
-	// 		printf("%d ", arr[i][j]);
-	// 	}
-	// 	printf("\n");
-	// }
-	// exit(0);
 	#pragma omp parallel default (none) num_threads (nthreads) shared (arr, sizes, pivots, n, nthreads, logT)
 	{
 		int threadRank = omp_get_thread_num();
@@ -101,55 +91,34 @@ int main(int argc, char* argv[]){
 		for(int iter = 0 ; iter < logT ; iter++){
 			int medianBroadcasterThreadRank = pow(2, iter) * threadRank/nthreads;
 			medianBroadcasterThreadRank *= sz;
-        	// int median = arr[medianBroadcasterThreadRank][findMedianIndex(sizes[medianBroadcasterThreadRank], arr[medianBroadcasterThreadRank])];
-           	int median = arr[medianBroadcasterThreadRank][sizes[medianBroadcasterThreadRank] / 2];
+        	int median = arr[medianBroadcasterThreadRank][sizes[medianBroadcasterThreadRank] / 2];
            	int pairThreadRank = (threadRank - medianBroadcasterThreadRank+(sz>>1))%sz + medianBroadcasterThreadRank;
         	int* pairThreadArr = (int*)malloc(sizes[pairThreadRank] * sizeof(int));
 			int merge_buf[n];
 			pivots[threadRank] = findPivot(median, sizes[threadRank], arr, threadRank);
 			int sizeOfPairThread = sizes[pairThreadRank];
 
-			memcpy(pairThreadArr, arr[pairThreadRank], sizes[pairThreadRank]*sizeof(int));	
-  
+			// memcpy(pairThreadArr, arr[pairThreadRank], sizes[pairThreadRank]*sizeof(int));	
+  			for(int i = 0 ; i < sizeOfPairThread ; i++){
+  				pairThreadArr[i] = arr[pairThreadRank][i];
+  			}
         	//wait for all threads to compute the pivot and store in the shared pivots array
            	#pragma omp barrier
            	int pivotOfPairThread = pivots[pairThreadRank];
-           	
-           	//barrier 1 check
-         //   	#pragma omp critical
-         //   	{
-         //   		printf("{");
-         //   		printf("iter = %d\n", iter);
-         //   		printf("medianBroadcasterThreadRank = %d\n", medianBroadcasterThreadRank);
-        	// 	printf("median = %d\n", median);
-        	// 	printf("threadRank = %d\n", threadRank);
-        	// 	printf("pairThreadRank = %d\n", pairThreadRank);
-        	// 	printf("pairThreadArr = ");
-        	// 	for(int i = 0 ; i < sizes[pairThreadRank] ; i++){
-        	// 		printf("%d ", pairThreadArr[i]);
-        	// 	}
-        	// 	printf("sizes = ");
-        	// 	for(int i = 0 ; i < nthreads ; i++){
-        	// 		printf("%d ", sizes[i]);
-        	// 	}
-        	// 	printf("}\n");
-        	// }
-        	
-        	int i,j = 0,k = 0, i_end, recv_count;
+
+        	int i,j = 0,k = 0, i_end, j_end;
         	if((threadRank - medianBroadcasterThreadRank) >= (sz>>1)){
-        		recv_count = sizeOfPairThread - pivotOfPairThread ;
         		i = pivots[threadRank], i_end = sizes[threadRank];
-            	sizes[threadRank] = sizes[threadRank] - pivots[threadRank] + recv_count;
-            	recv_count = sizeOfPairThread;
+            	sizes[threadRank] = sizes[threadRank] - pivots[threadRank] + sizeOfPairThread - pivotOfPairThread ;
+            	j_end = sizeOfPairThread;
             	j = pivotOfPairThread;
         	}
         	else{
-        		recv_count = pivotOfPairThread;
+        		j_end = pivotOfPairThread;
         		i = 0, i_end = pivots[threadRank];
-            	sizes[threadRank] = pivots[threadRank] + recv_count;
+            	sizes[threadRank] = pivots[threadRank] + j_end;
 	        }
-
-	        while(i < i_end && j < recv_count){
+	        while(i < i_end && j < j_end){
 	            if(arr[threadRank][i] < pairThreadArr[j])
 	                merge_buf[k++] = arr[threadRank][i++];
 	            else
@@ -157,22 +126,13 @@ int main(int argc, char* argv[]){
         	}
 	        while(i < i_end)
 	            merge_buf[k++] = arr[threadRank][i++];
-	        while(j < recv_count)
+	        while(j < j_end)
 	            merge_buf[k++] = pairThreadArr[j++];
 			
-			// memcpy(arr[threadRank], merge_buf, sizes[threadRank]);
+			// memcpy(arr[threadRank], merge_buf, sizes[threadRank]*sizeof(int));
 			for(int i = 0 ; i < sizes[threadRank] ; i++){
-				arr[threadRank][i] = merge_buf[i];
+				arr[threadRank][i] = merge_buf[i]; 
 			}
-			//check arr
-			// #pragma omp critical
-			// {	
-			// 	printf("Thread %d\n", threadRank);
-			// 	for(int i = 0 ; i < sizes[threadRank] ; i++){
-			// 		printf("%d ", arr[threadRank][i]);
-			// 	}
-			// 	printf("\n");
-			// }
         	sz /= 2;	
 			#pragma omp barrier
 		}
