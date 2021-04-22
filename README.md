@@ -1,8 +1,8 @@
 # Parallel in memory implementation of hyperquicksort / hypercubequicksort algorithm.	
 
-## If the heap/stack memory is exceeded, segfault is returned. 
+If the heap/stack memory is exceeded, segfault is returned.<br /> 
 
-## If you have any suggestions/improvisations/bugs please add a PR or create an issue
+If you have any suggestions/improvisations/bugs please add a PR or create an issue<br />
 
 Build from source:<br />
 `g++ random_array_generator.cpp -o random`
